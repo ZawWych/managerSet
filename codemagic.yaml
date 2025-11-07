@@ -20,7 +20,7 @@ workflows:
       - name: Build APK (Debug)
         script: |
           source .venv/bin/activate
-          flet build android --debug
+          flet build apk --debug
 
       - name: Rename APK
         script: |
