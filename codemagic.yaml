@@ -23,7 +23,7 @@ workflows:
         script: |
           yes | flutter doctor --android-licenses
           source .venv/bin/activate
-          flet build apk --module-name=main
+          flet build apk --module-name=main --flet-version 0.24.0
 
       - name: Rename APK
         script: |
