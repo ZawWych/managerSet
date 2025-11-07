@@ -9,29 +9,15 @@ workflows:
         script: |
           pip3 install flet==0.22.1
           
-      - name: Build APK with custom settings
+      - name: Build APK
         script: |
-          # Используем иконку из папки icons
-          if [ -f "icons/icon.png" ]; then
-            echo "✅ Найдена иконка в папке icons, используем кастомную"
-            flet build apk --name "Set Manager" --icon "icons/icon.png" --distpath "./build_output"
-          else
-            echo "⚠ Иконка не найдена в папке icons, используем стандартную"
-            flet build apk --name "Set Manager" --distpath "./build_output"
-          fi
+          flet build apk
 
-      - name: Upload APK to releases
+      - name: Rename APK
         script: |
-          # Переименовываем APK и загружаем в артефакты
-          APK_PATH=$(find ./build_output -name "*.apk" | head -n 1)
-          if [ -n "$APK_PATH" ]; then
-            cp "$APK_PATH" "./Set_Manager.apk"
-            echo "✅ APK создан: Set_Manager.apk"
-          else
-            echo "❌ APK не найден!"
-            find ./build_output -type f
-            exit 1
-          fi
+          APK_PATH=$(find build -name "*.apk" | head -n 1)
+          cp "$APK_PATH" "./Set_Manager.apk"
+          echo "✅ APK создан"
 
     artifacts:
       - Set_Manager.apk
