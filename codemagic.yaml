@@ -11,7 +11,7 @@ workflows:
           
       - name: Build APK
         script: |
-          flet build apk --include-packages "requests,gspread,google.auth,googleapiclient"
+          flet build apk
 
       - name: Rename APK
         script: |
