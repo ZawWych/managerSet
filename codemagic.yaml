@@ -1,0 +1,31 @@
+workflows:
+  build-flet-apk:
+    name: Build Flet Android APK (Debug)
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      vars:
+        PYTHON_VERSION: "3.11"
+    scripts:
+      - name: Install Python & Flet
+        script: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip python3-venv
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install flet==0.21.2
+          pip install -r requirements.txt || true
+
+      - name: Build APK (Debug)
+        script: |
+          source .venv/bin/activate
+          flet build android --debug
+
+      - name: Rename APK
+        script: |
+          APK_PATH=$(find build -name "*.apk" | head -n 1)
+          mv "$APK_PATH" "Set Manager.apk"
+
+    artifacts:
+      - Set Manager.apk
