@@ -3,7 +3,7 @@ workflows:
     name: Build Flet Android APK (Debug)
     max_build_duration: 60
     environment:
-      flutter: stable
+      flutter: "3.13.9"
       vars:
         PYTHON_VERSION: "3.11"
     scripts:
@@ -20,7 +20,7 @@ workflows:
       - name: Build APK (Debug)
         script: |
           source .venv/bin/activate
-          flet build apk --module-name main
+          flet build apk --module-name=main
 
       - name: Rename APK
         script: |
