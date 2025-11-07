@@ -1,31 +1,59 @@
 workflows:
   build-flet-apk:
-    name: Build Flet Android APK (Debug)
-    max_build_duration: 60
+    name: Build Flet Android APK
+    max_build_duration: 120
     environment:
+      groups:
+        - android_signing
       flutter: "3.22.2"
-
-      vars:
-        PYTHON_VERSION: "3.11"
     scripts:
-      - name: Install Python & Flet
+      - name: Install Python & Dependencies
         script: |
           sudo apt-get update
           sudo apt-get install -y python3-pip python3-venv
-          python3 -m venv .venv
-          source .venv/bin/activate
+          python3 -m venv flet_venv
+          source flet_venv/bin/activate
           pip install --upgrade pip
-          pip install flet==0.24.0
-          pip install flet-embed==0.24.0
-          pip install -r requirements.txt || true
+          
+          echo "Пытаемся установить Flet версии 0.24.1..."
+          pip install flet==0.24.1 || (
+            echo "❌ Flet 0.24.1 не сработал, пробуем 0.23.1..."
+            pip install flet==0.23.1 || (
+              echo "❌ Flet 0.23.1 не сработал, пробуем 0.22.1..."
+              pip install flet==0.22.1 || (
+                echo "❌ Flet 0.22.1 не сработал, пробуем последнюю версию..."
+                pip install flet
+              )
+            )
+          )
+          
+          pip install requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0
+          echo "✅ Все зависимости установлены"
+
+      - name: Accept Android licenses
+        script: |
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
+          yes | sdkmanager --licenses
 
       - name: Build APK
         script: |
-          yes | flutter doctor --android-licenses
-          source .venv/bin/activate
-          flet build apk --module-name=main --flet-version 0.24.0
+          source flet_venv/bin/activate
+          flet build apk --verbose --name "Set Manager"
 
       - name: Rename APK
         script: |
-          APK_PATH=$(find build -name "*.apk" | head -n 1)
-          mv "$APK_PATH" "Set Manager.apk"
+          APK_PATH=$(find . -name "*.apk" | head -n 1)
+          if [ -n "$APK_PATH" ]; then
+            echo "✅ APK найден: $APK_PATH"
+            mv "$APK_PATH" "Set_Manager.apk"
+            echo "✅ Файл переименован в Set_Manager.apk"
+          else
+            echo "❌ APK файл не найден!"
+            echo "Ищем все APK файлы:"
+            find . -name "*.apk" 2>/dev/null || echo "APK файлы не найдены"
+            exit 1
+          fi
+
+    artifacts:
+      - "*.apk"
