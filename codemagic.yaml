@@ -1,59 +1,17 @@
 workflows:
   build-flet-apk:
-    name: Build Flet Android APK
-    max_build_duration: 120
+    name: Build Flet APK
+    max_build_duration: 30
     environment:
-      groups:
-        - android_signing
       flutter: "3.22.2"
     scripts:
-      - name: Install Python & Dependencies
+      - name: Install Flet
         script: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip python3-venv
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install --upgrade pip
+          pip3 install flet==0.22.1
           
-          echo "🔄 Пробуем установить Flet версии 0.22.1..."
-          pip install flet==0.22.1 requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0 || (
-            echo "❌ Flet 0.22.1 не сработал, пробуем 0.23.1..."
-            pip install flet==0.23.1 requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0 || (
-              echo "❌ Flet 0.23.1 не сработал, пробуем 0.24.1..."
-              pip install flet==0.24.1 requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0 || (
-                echo "❌ Все версии Flet не сработали, пробуем последнюю..."
-                pip install flet requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0
-              )
-            )
-          )
-          echo "✅ Все зависимости установлены"
-
-      - name: Accept Android licenses
-        script: |
-          echo "Принимаем Android лицензии..."
-          mkdir -p ~/.android
-          touch ~/.android/repositories.cfg
-          # Пробуем разные способы принятия лицензий
-          flutter doctor --android-licenses || \
-          $ANDROID_HOME/tools/bin/sdkmanager --licenses || \
-          echo "Лицензии приняты альтернативным способом"
-
       - name: Build APK
         script: |
-          source .venv/bin/activate
-          flet build apk --verbose
-
-      - name: Rename APK
-        script: |
-          APK_PATH=$(find build -name "*.apk" | head -n 1)
-          if [ -n "$APK_PATH" ]; then
-            mv "$APK_PATH" "Set_Manager.apk"
-            echo "✅ APK успешно создан: Set_Manager.apk"
-          else
-            echo "❌ APK file not found!"
-            find build -type f
-            exit 1
-          fi
+          flet build apk
 
     artifacts:
-      - "*.apk"
+      - build/app/outputs/flutter-apk/*.apk
