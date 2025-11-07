@@ -3,9 +3,10 @@ workflows:
     name: Build Flet Android APK (Debug)
     max_build_duration: 60
     environment:
-      flutter: "3.13.9"
+      flutter: "3.22.2"
       vars:
         PYTHON_VERSION: "3.11"
+
     scripts:
       - name: Install Python & Flet
         script: |
@@ -20,9 +21,12 @@ workflows:
       - name: Build APK (Debug)
         script: |
           source .venv/bin/activate
-          flet build apk --module-name=main
+          flet build apk --debug --module-name main
 
       - name: Rename APK
         script: |
           APK_PATH=$(find build -name "*.apk" | head -n 1)
-          mv "$APK_PATH" "Set Manager.apk"
+          mv "$APK_PATH" "Set-Manager.apk"
+
+    artifacts:
+      - Set-Manager.apk
