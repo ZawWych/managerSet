@@ -9,9 +9,14 @@ workflows:
         script: |
           pip3 install flet==0.22.1
           
+      - name: Clean cache
+        script: |
+          flutter clean
+          echo "✅ Cache cleaned"
+
       - name: Build APK
         script: |
-          flet build apk --project-name "Set Manager"
+          flet build apk --product "Set Manage"
 
       - name: Rename APK
         script: |
