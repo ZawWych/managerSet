@@ -6,7 +6,7 @@ version: 1.0.0
 release: production
 
 environment:
-  flet: ">=0.21.2"
+  flutter: stable
 
 icons:
   web:
