@@ -16,7 +16,7 @@ workflows:
 
       - name: Build APK
         script: |
-          flet build apk --product "Set Manage"
+          flet build apk --product "Set Manager"
 
       - name: Rename APK
         script: |
