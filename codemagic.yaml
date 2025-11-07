@@ -18,10 +18,10 @@ workflows:
           pip install flet==0.21.2
           pip install -r requirements.txt || true
 
-      - name: Build APK (Debug)
+      - name: Build APK
         script: |
           source .venv/bin/activate
-          flet build apk --debug --module-name main
+          flet build apk --module-name main
 
       - name: Rename APK
         script: |
