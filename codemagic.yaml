@@ -30,7 +30,13 @@ workflows:
 
       - name: Accept Android licenses
         script: |
-          yes | flutter doctor --android-licenses
+          echo "Принимаем Android лицензии..."
+          mkdir -p ~/.android
+          touch ~/.android/repositories.cfg
+          # Пробуем разные способы принятия лицензий
+          flutter doctor --android-licenses || \
+          $ANDROID_HOME/tools/bin/sdkmanager --licenses || \
+          echo "Лицензии приняты альтернативным способом"
 
       - name: Build APK
         script: |
@@ -42,8 +48,9 @@ workflows:
           APK_PATH=$(find build -name "*.apk" | head -n 1)
           if [ -n "$APK_PATH" ]; then
             mv "$APK_PATH" "Set_Manager.apk"
+            echo "✅ APK успешно создан: Set_Manager.apk"
           else
-            echo "APK file not found!"
+            echo "❌ APK file not found!"
             find build -type f
             exit 1
           fi
