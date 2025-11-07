@@ -15,7 +15,7 @@ workflows:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install --upgrade pip
-          pip install flet==0.21.2
+          pip install flet==0.24.0
           pip install -r requirements.txt || true
 
       - name: Build APK
