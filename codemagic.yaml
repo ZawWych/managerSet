@@ -5,13 +5,13 @@ workflows:
     environment:
       flutter: "3.22.2"
     scripts:
-      - name: Install Flet
+      - name: Install dependencies
         script: |
-          pip3 install flet==0.22.1
+          pip3 install flet==0.22.1 requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0
           
       - name: Build APK
         script: |
-          flet build apk
+          flet build apk --include-packages "requests,gspread,google.auth,googleapiclient"
 
       - name: Rename APK
         script: |
