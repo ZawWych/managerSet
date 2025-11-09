@@ -13,7 +13,7 @@ workflows:
       - name: Build universal APK
         script: |
           # Собираем универсальный APK со всеми архитектурами
-          flet build apk --product "Set Manager" --no-split-per-abi
+          flet build apk --product "Set Manager"
 
       - name: Rename APK
         script: |
