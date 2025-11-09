@@ -1,7 +1,7 @@
 workflows:
   build-flet-apk:
     name: Build Flet APK
-    max_build_duration: 30
+    max_build_duration: 60
     environment:
       flutter: "3.22.2"
     scripts:
@@ -10,14 +10,16 @@ workflows:
           pip3 install flet==0.22.1
           pip3 install requests==2.31.0 gspread==6.0.0 google-auth==2.23.4 google-api-python-client==2.108.0
           
-      - name: Build APK
+      - name: Build universal APK
         script: |
-          flet build apk --product "Set Manager"
+          # Собираем универсальный APK со всеми архитектурами
+          flet build apk --product "Set Manager" --no-split-per-abi
 
       - name: Rename APK
         script: |
           APK_PATH=$(find build -name "*.apk" | head -n 1)
-          cp "$APK_PATH" "./Set_Manager.apk"
+          cp "$APK_PATH" "./Set_Manager_Universal.apk"
+          echo "✅ Универсальный APK создан"
 
     artifacts:
-      - Set_Manager.apk
+      - "*.apk"

@@ -600,4 +600,4 @@ def main(page: ft.Page):
     show_main_page()
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.app(target=main, view=ft.AppView.FLET_APP)
