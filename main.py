@@ -2,8 +2,10 @@ import flet as ft
 import csv
 import os
 import requests
+import sys
 import json
 from datetime import datetime
+
 
 class GoogleSheetsManager:
     def __init__(self, web_app_url):
@@ -216,388 +218,421 @@ class SalesApp:
             return False
 
 def main(page: ft.Page):
-    page.title = "Менеджер продаж"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.padding = 20
-    page.scroll = "adaptive"
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.START
+    # Пробуем инициализировать приложение
+    try:
+        page.title = "Менеджер продаж"
+        page.theme_mode = ft.ThemeMode.DARK
+        page.padding = 20
+        page.scroll = "adaptive"
+        page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+        page.vertical_alignment = ft.MainAxisAlignment.START
 
-    # Инициализация менеджера Google Таблиц
-    # ЗАМЕНИ ЭТОТ URL НА СВОЙ URL ИЗ GOOGLE APPS SCRIPT
-    WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz6pbOosDMOZGa-YELYdZSnyMcKnQjI8VN36ycROMV9EBtvyI7DqNMaBt7l_3uR4Y3K/exec"
-    sheets_manager = GoogleSheetsManager(WEB_APP_URL)
-    app = SalesApp(sheets_manager)
-    
-    # Переменная для диалога очистки
-    clear_dialog = None
-    
-    # Поля ввода данных
-    product_name = ft.TextField(label="Название товара", hint_text="Введите название товара")
-    color = ft.TextField(label="Цвет", hint_text="Введите цвет")
-    size = ft.TextField(label="Размер", hint_text="Введите размер")
-    price = ft.TextField(
-        label="Цена", 
-        hint_text="Введите цену", 
-        input_filter=ft.NumbersOnlyInputFilter(),
-        on_change=lambda e: calculate_remaining()
-    )
-    
-    category = ft.Dropdown(
-        label="Категория товара",
-        hint_text="Выберите категорию",
-        options=[ft.dropdown.Option(cat) for cat in app.categories],
-        on_change=lambda e: on_category_change()
-    )
-    
-    courier_name = ft.TextField(label="Имя курьера (необязательно)", hint_text="Введите имя курьера")
-    courier_amount = ft.TextField(
-        label="Сумма курьеру (необязательно)", 
-        hint_text="Введите сумму курьеру",
-        input_filter=ft.NumbersOnlyInputFilter()
-    )
-    
-    # Поля для подзаказа (изначально скрыты)
-    paid_amount = ft.TextField(
-        label="Сколько заплатили", 
-        hint_text="Введите сумму", 
-        input_filter=ft.NumbersOnlyInputFilter(), 
-        visible=False,
-        on_change=lambda e: calculate_remaining()
-    )
-    remaining_amount = ft.TextField(
-        label="Сколько осталось заплатить", 
-        hint_text="Автоматический расчет", 
-        input_filter=ft.NumbersOnlyInputFilter(), 
-        visible=False,
-        read_only=True
-    )
-    client_link = ft.TextField(label="Связь с клиентом", hint_text="Ссылка или номер", visible=False)
-    
-    # Поле для сообщений
-    result_text = ft.Text("", size=16)
-    
-    # Индикатор подключения к Google Таблицам
-    connection_status = ft.Text("✅ Подключено к Google Таблицам", color="green", size=12, 
-                               visible=bool(WEB_APP_URL and "https://script.google.com/macros/s/AKfycbz6pbOosDMOZGa-YELYdZSnyMcKnQjI8VN36ycROMV9EBtvyI7DqNMaBt7l_3uR4Y3K/exec" not in WEB_APP_URL))
-    
-    def calculate_remaining():
-        """Автоматически рассчитывает остаток оплаты"""
-        if price.value and paid_amount.value:
-            try:
-                total_price = float(price.value)
-                paid = float(paid_amount.value)
-                remaining = total_price - paid
-                remaining_amount.value = str(max(0, remaining))
-                page.update()
-            except ValueError:
-                remaining_amount.value = "0"
-                page.update()
-    
-    def on_category_change():
-        """Обработчик изменения категории"""
-        is_podzakaz = category.value == "Подзаказ"
-        
-        # Показываем/скрываем поля подзаказа
-        paid_amount.visible = is_podzakaz
-        remaining_amount.visible = is_podzakaz
-        client_link.visible = is_podzakaz
-        
-        # Для подзаказов скрываем поля курьера (они есть в основном объекте)
-        courier_name.visible = not is_podzakaz
-        courier_amount.visible = not is_podzakaz
-        
+        # Показываем что приложение запускается
+        page.add(ft.Text("🔄 Загрузка приложения...", size=18))
         page.update()
 
-    def save_click(e):
-        """Обработчик кнопки Сохранить"""
-        if not product_name.value:
-            show_message("⚠ Введите название товара", "orange")
-        elif not color.value:
-            show_message("⚠ Введите цвет", "orange")
-        elif not size.value:
-            show_message("⚠ Введите размер", "orange")
-        elif not price.value:
-            show_message("⚠ Введите цену", "orange")
-        elif not category.value:
-            show_message("⚠ Выберите категорию", "orange")
-        else:
-            # Показываем индикатор загрузки
-            result_text.value = "⏳ Сохранение данных..."
-            result_text.color = "blue"
+        # Инициализация менеджера Google Таблиц
+        WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz6pbOosDMOZGa-YELYdZSnyMcKnQjI8VN36ycROMV9EBtvyI7DqNMaBt7l_3uR4Y3K/exec"
+        sheets_manager = GoogleSheetsManager(WEB_APP_URL)
+        app = SalesApp(sheets_manager)
+        
+        # Переменная для диалога очистки
+        clear_dialog = None
+        
+        # Поля ввода данных
+        product_name = ft.TextField(label="Название товара", hint_text="Введите название товара")
+        color = ft.TextField(label="Цвет", hint_text="Введите цвет")
+        size = ft.TextField(label="Размер", hint_text="Введите размер")
+        price = ft.TextField(
+            label="Цена", 
+            hint_text="Введите цену", 
+            input_filter=ft.NumbersOnlyInputFilter(),
+            on_change=lambda e: calculate_remaining()
+        )
+        
+        category = ft.Dropdown(
+            label="Категория товара",
+            hint_text="Выберите категорию",
+            options=[ft.dropdown.Option(cat) for cat in app.categories],
+            on_change=lambda e: on_category_change()
+        )
+        
+        courier_name = ft.TextField(label="Имя курьера (необязательно)", hint_text="Введите имя курьера")
+        courier_amount = ft.TextField(
+            label="Сумма курьеру (необязательно)", 
+            hint_text="Введите сумму курьеру",
+            input_filter=ft.NumbersOnlyInputFilter()
+        )
+        
+        # Поля для подзаказа (изначально скрыты)
+        paid_amount = ft.TextField(
+            label="Сколько заплатили", 
+            hint_text="Введите сумму", 
+            input_filter=ft.NumbersOnlyInputFilter(), 
+            visible=False,
+            on_change=lambda e: calculate_remaining()
+        )
+        remaining_amount = ft.TextField(
+            label="Сколько осталось заплатить", 
+            hint_text="Автоматический расчет", 
+            input_filter=ft.NumbersOnlyInputFilter(), 
+            visible=False,
+            read_only=True
+        )
+        client_link = ft.TextField(label="Связь с клиентом", hint_text="Ссылка или номер", visible=False)
+        
+        # Поле для сообщений
+        result_text = ft.Text("", size=16)
+        
+        # Индикатор подключения к Google Таблицам
+        connection_status = ft.Text("✅ Подключено к Google Таблицам", color="green", size=12, 
+                                   visible=bool(WEB_APP_URL))
+        
+        def calculate_remaining():
+            """Автоматически рассчитывает остаток оплаты"""
+            if price.value and paid_amount.value:
+                try:
+                    total_price = float(price.value)
+                    paid = float(paid_amount.value)
+                    remaining = total_price - paid
+                    remaining_amount.value = str(max(0, remaining))
+                    page.update()
+                except ValueError:
+                    remaining_amount.value = "0"
+                    page.update()
+        
+        def on_category_change():
+            """Обработчик изменения категории"""
+            is_podzakaz = category.value == "Подзаказ"
+            
+            # Показываем/скрываем поля подзаказа
+            paid_amount.visible = is_podzakaz
+            remaining_amount.visible = is_podzakaz
+            client_link.visible = is_podzakaz
+            
+            # Для подзаказов скрываем поля курьера (они есть в основном объекте)
+            courier_name.visible = not is_podzakaz
+            courier_amount.visible = not is_podzakaz
+            
             page.update()
-            
-            if category.value == "Подзаказ":
-                # Сохраняем подзаказ в ТАБЛИЦУ ПОДЗАКАЗОВ
-                if not paid_amount.value:
-                    show_message("⚠ Введите сумму оплаты", "orange")
-                    return
-                
-                success, message = app.save_podzakaz(
-                    product_name.value,
-                    color.value,
-                    size.value,
-                    price.value,
-                    paid_amount.value,
-                    remaining_amount.value or "0",
-                    client_link.value or ""
-                )
+
+        def save_click(e):
+            """Обработчик кнопки Сохранить"""
+            if not product_name.value:
+                show_message("⚠ Введите название товара", "orange")
+            elif not color.value:
+                show_message("⚠ Введите цвет", "orange")
+            elif not size.value:
+                show_message("⚠ Введите размер", "orange")
+            elif not price.value:
+                show_message("⚠ Введите цену", "orange")
+            elif not category.value:
+                show_message("⚠ Выберите категорию", "orange")
             else:
-                # Сохраняем обычный заказ в ТАБЛИЦУ ОБЫЧНЫХ ЗАКАЗОВ
-                success, message = app.save_sale(
-                    product_name.value,
-                    color.value,
-                    size.value,
-                    price.value,
-                    category.value,
-                    courier_name.value or "",
-                    courier_amount.value or ""
-                )
+                # Показываем индикатор загрузки
+                result_text.value = "⏳ Сохранение данных..."
+                result_text.color = "blue"
+                page.update()
+                
+                if category.value == "Подзаказ":
+                    # Сохраняем подзаказ в ТАБЛИЦУ ПОДЗАКАЗОВ
+                    if not paid_amount.value:
+                        show_message("⚠ Введите сумму оплаты", "orange")
+                        return
+                    
+                    success, message = app.save_podzakaz(
+                        product_name.value,
+                        color.value,
+                        size.value,
+                        price.value,
+                        paid_amount.value,
+                        remaining_amount.value or "0",
+                        client_link.value or ""
+                    )
+                else:
+                    # Сохраняем обычный заказ в ТАБЛИЦУ ОБЫЧНЫХ ЗАКАЗОВ
+                    success, message = app.save_sale(
+                        product_name.value,
+                        color.value,
+                        size.value,
+                        price.value,
+                        category.value,
+                        courier_name.value or "",
+                        courier_amount.value or ""
+                    )
+                
+                show_message(message, "green" if success else "red")
+                
+                if success:
+                    clear_input_fields()
+
+        def show_message(message, color):
+            """Показывает сообщение пользователю"""
+            result_text.value = message
+            result_text.color = color
+            page.update()
+
+        def clear_input_fields():
+            """Очищает все поля ввода"""
+            product_name.value = ""
+            color.value = ""
+            size.value = ""
+            price.value = ""
+            category.value = ""
+            courier_name.value = ""
+            courier_amount.value = ""
+            paid_amount.value = ""
+            remaining_amount.value = ""
+            client_link.value = ""
             
-            show_message(message, "green" if success else "red")
+            # Сбрасываем видимость полей подзаказа
+            paid_amount.visible = False
+            remaining_amount.visible = False
+            client_link.visible = False
+            courier_name.visible = True
+            courier_amount.visible = True
             
-            if success:
-                clear_input_fields()
+            page.update()
 
-    def show_message(message, color):
-        """Показывает сообщение пользователю"""
-        result_text.value = message
-        result_text.color = color
-        page.update()
+        def show_clear_confirmation(file_to_clear, title, is_podzakaz):
+            """Показывает диалог подтверждения очистки"""
+            nonlocal clear_dialog
+            
+            def confirm_clear(e):
+                """Обработчик кнопки Очистить"""
+                if app.clear_history(file_to_clear):
+                    # Закрываем диалог СРАЗУ
+                    clear_dialog.open = False
+                    page.update()
+                    
+                    # Показываем уведомление об успехе
+                    page.snack_bar = ft.SnackBar(content=ft.Text("✅ История успешно очищена"))
+                    page.snack_bar.open = True
+                    
+                    # Обновляем страницу истории (теперь она пустая)
+                    show_history_page([], title, file_to_clear, is_podzakaz)
+                else:
+                    # Показываем уведомление об ошибке
+                    page.snack_bar = ft.SnackBar(content=ft.Text("❌ Ошибка при очистке"))
+                    page.snack_bar.open = True
+                    page.update()
 
-    def clear_input_fields():
-        """Очищает все поля ввода"""
-        product_name.value = ""
-        color.value = ""
-        size.value = ""
-        price.value = ""
-        category.value = ""
-        courier_name.value = ""
-        courier_amount.value = ""
-        paid_amount.value = ""
-        remaining_amount.value = ""
-        client_link.value = ""
-        
-        # Сбрасываем видимость полей подзаказа
-        paid_amount.visible = False
-        remaining_amount.visible = False
-        client_link.visible = False
-        courier_name.visible = True
-        courier_amount.visible = True
-        
-        page.update()
-
-    def show_clear_confirmation(file_to_clear, title, is_podzakaz):
-        """Показывает диалог подтверждения очистки"""
-        nonlocal clear_dialog
-        
-        def confirm_clear(e):
-            """Обработчик кнопки Очистить"""
-            if app.clear_history(file_to_clear):
-                # Закрываем диалог СРАЗУ
+            def cancel_clear(e):
+                """Обработчик кнопки Отмена"""
                 clear_dialog.open = False
                 page.update()
-                
-                # Показываем уведомление об успехе
-                page.snack_bar = ft.SnackBar(content=ft.Text("✅ История успешно очищена"))
-                page.snack_bar.open = True
-                
-                # Обновляем страницу истории (теперь она пустая)
-                show_history_page([], title, file_to_clear, is_podzakaz)
-            else:
-                # Показываем уведомление об ошибке
-                page.snack_bar = ft.SnackBar(content=ft.Text("❌ Ошибка при очистке"))
-                page.snack_bar.open = True
-                page.update()
 
-        def cancel_clear(e):
-            """Обработчик кнопки Отмена"""
-            clear_dialog.open = False
+            # Создаем диалог если его еще нет
+            if clear_dialog is None:
+                clear_dialog = ft.AlertDialog(
+                    title=ft.Text("Подтверждение очистки"),
+                    content=ft.Text("Вы уверены, что хотите очистить всю историю продаж?\nЭто действие невозможно отменить."),
+                    actions=[
+                        ft.TextButton("Отмена", on_click=cancel_clear),
+                        ft.TextButton("Очистить", on_click=confirm_clear),
+                    ],
+                )
+                page.overlay.append(clear_dialog)
+            
+            # Показываем диалог
+            clear_dialog.open = True
             page.update()
 
-        # Создаем диалог если его еще нет
-        if clear_dialog is None:
-            clear_dialog = ft.AlertDialog(
-                title=ft.Text("Подтверждение очистки"),
-                content=ft.Text("Вы уверены, что хотите очистить всю историю продаж?\nЭто действие невозможно отменить."),
-                actions=[
-                    ft.TextButton("Отмена", on_click=cancel_clear),
-                    ft.TextButton("Очистить", on_click=confirm_clear),
-                ],
-            )
-            page.overlay.append(clear_dialog)
-        
-        # Показываем диалог
-        clear_dialog.open = True
-        page.update()
-
-    def show_history_page(history, title, file_path, is_podzakaz=False):
-        """Показывает страницу с историей"""
-        history_content = []
-        
-        if not history:
-            history_content = [
-                ft.Container(
-                    content=ft.Column([
-                        ft.Text("📋", size=64),
-                        ft.Text("Нет записей в истории", size=20, color="grey"),
-                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                    padding=50,
-                    alignment=ft.alignment.center
-                )
-            ]
-        else:
-            total_sales = len(history)
-            total_revenue = sum(float(record.get('Цена', 0)) for record in history)
+        def show_history_page(history, title, file_path, is_podzakaz=False):
+            """Показывает страницу с историей"""
+            history_content = []
             
-            history_content = [
-                ft.Text(title, size=24, weight=ft.FontWeight.BOLD),
-                
-                # Карточки статистики
-                ft.Row([
+            if not history:
+                history_content = [
                     ft.Container(
                         content=ft.Column([
-                            ft.Text("Всего продаж", size=14, color="grey"),
-                            ft.Text(str(total_sales), size=24, weight=ft.FontWeight.BOLD),
+                            ft.Text("📋", size=64),
+                            ft.Text("Нет записей в истории", size=20, color="grey"),
                         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                        padding=15,
-                        bgcolor="#0d47a1",
-                        border_radius=10,
-                        expand=1
-                    ),
-                    ft.Container(
-                        content=ft.Column([
-                            ft.Text("Общая выручка", size=14, color="grey"),
-                            ft.Text(f"{total_revenue:,.0f} ₸", size=24, weight=ft.FontWeight.BOLD),
-                        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                        padding=15,
-                        bgcolor="#1b5e20",
-                        border_radius=10,
-                        expand=1
-                    ),
-                ]),
-                ft.Divider(),
-            ]
-            
-            # Показываем все записи (новые сверху)
-            for record in reversed(history):
-                date = record.get('Дата', '')[:16]
-                product = record.get('Товар', '')
-                color_val = record.get('Цвет', '')
-                size_val = record.get('Размер', '')
-                price_val = record.get('Цена', '')
-                category_val = record.get('Категория', '')
-                courier_val = record.get('Курьер', '')
-                courier_amount_val = record.get('Сумма курьеру', '')
+                        padding=50,
+                        alignment=ft.alignment.center
+                    )
+                ]
+            else:
+                total_sales = len(history)
+                total_revenue = sum(float(record.get('Цена', 0)) for record in history)
                 
-                # Создаем карточку для записи
-                record_card_content = [
-                    # Первая строка: товар и цена
+                history_content = [
+                    ft.Text(title, size=24, weight=ft.FontWeight.BOLD),
+                    
+                    # Карточки статистики
                     ft.Row([
-                        ft.Text(product, weight=ft.FontWeight.BOLD, expand=1, size=16),
-                        ft.Text(f"{price_val} ₸", color="green", weight=ft.FontWeight.BOLD, size=16),
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text("Всего продаж", size=14, color="grey"),
+                                ft.Text(str(total_sales), size=24, weight=ft.FontWeight.BOLD),
+                            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                            padding=15,
+                            bgcolor="#0d47a1",
+                            border_radius=10,
+                            expand=1
+                        ),
+                        ft.Container(
+                            content=ft.Column([
+                                ft.Text("Общая выручка", size=14, color="grey"),
+                                ft.Text(f"{total_revenue:,.0f} ₸", size=24, weight=ft.FontWeight.BOLD),
+                            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+                            padding=15,
+                            bgcolor="#1b5e20",
+                            border_radius=10,
+                            expand=1
+                        ),
                     ]),
-                    # Вторая строка: цвет и размер
-                    ft.Text(f"Цвет: {color_val} | Размер: {size_val}"),
+                    ft.Divider(),
                 ]
                 
-                if is_podzakaz:
-                    # Для подзаказов
-                    paid = record.get('Сколько заплатили', '')
-                    remaining = record.get('Сколько осталось заплатить', '')
-                    client = record.get('Связь с клиентом', '')
+                # Показываем все записи (новые сверху)
+                for record in reversed(history):
+                    date = record.get('Дата', '')[:16]
+                    product = record.get('Товар', '')
+                    color_val = record.get('Цвет', '')
+                    size_val = record.get('Размер', '')
+                    price_val = record.get('Цена', '')
+                    category_val = record.get('Категория', '')
+                    courier_val = record.get('Курьер', '')
+                    courier_amount_val = record.get('Сумма курьеру', '')
                     
-                    record_card_content.extend([
-                        ft.Text(f"Оплачено: {paid} ₸"),
-                        ft.Text(f"Осталось: {remaining} ₸"),
-                        ft.Text(f"Клиент: {client}") if client else ft.Text("Клиент: не указан", color="grey"),
-                    ])
-                else:
-                    # Для обычных заказов
-                    record_card_content.extend([
-                        ft.Text(f"Категория: {category_val}"),
-                        *([ft.Text(f"Курьер: {courier_val}")] if courier_val else []),
-                        *([ft.Text(f"Сумма курьеру: {courier_amount_val} ₸")] if courier_amount_val else []),
-                    ])
-                
-                record_card_content.append(ft.Text(f"Дата: {date}", size=12, color="grey"))
-                
-                record_card = ft.Card(
-                    content=ft.Container(
-                        ft.Column(record_card_content, spacing=5),
-                        padding=15,
-                    ),
-                    margin=ft.margin.only(bottom=10),
+                    # Создаем карточку для записи
+                    record_card_content = [
+                        # Первая строка: товар и цена
+                        ft.Row([
+                            ft.Text(product, weight=ft.FontWeight.BOLD, expand=1, size=16),
+                            ft.Text(f"{price_val} ₸", color="green", weight=ft.FontWeight.BOLD, size=16),
+                        ]),
+                        # Вторая строка: цвет и размер
+                        ft.Text(f"Цвет: {color_val} | Размер: {size_val}"),
+                    ]
+                    
+                    if is_podzakaz:
+                        # Для подзаказов
+                        paid = record.get('Сколько заплатили', '')
+                        remaining = record.get('Сколько осталось заплатить', '')
+                        client = record.get('Связь с клиентом', '')
+                        
+                        record_card_content.extend([
+                            ft.Text(f"Оплачено: {paid} ₸"),
+                            ft.Text(f"Осталось: {remaining} ₸"),
+                            ft.Text(f"Клиент: {client}") if client else ft.Text("Клиент: не указан", color="grey"),
+                        ])
+                    else:
+                        # Для обычных заказов
+                        record_card_content.extend([
+                            ft.Text(f"Категория: {category_val}"),
+                            *([ft.Text(f"Курьер: {courier_val}")] if courier_val else []),
+                            *([ft.Text(f"Сумма курьеру: {courier_amount_val} ₸")] if courier_amount_val else []),
+                        ])
+                    
+                    record_card_content.append(ft.Text(f"Дата: {date}", size=12, color="grey"))
+                    
+                    record_card = ft.Card(
+                        content=ft.Container(
+                            ft.Column(record_card_content, spacing=5),
+                            padding=15,
+                        ),
+                        margin=ft.margin.only(bottom=10),
+                    )
+                    
+                    history_content.append(record_card)
+            
+            # Создаем кнопки
+            buttons = [
+                ft.ElevatedButton(
+                    "Назад к добавлению заказов", 
+                    on_click=lambda e: show_main_page(),
+                    style=ft.ButtonStyle(padding=20)
                 )
-                
-                history_content.append(record_card)
-        
-        # Создаем кнопки
-        buttons = [
-            ft.ElevatedButton(
-                "Назад к добавлению заказов", 
-                on_click=lambda e: show_main_page(),
-                style=ft.ButtonStyle(padding=20)
-            )
-        ]
-        
-        # Добавляем кнопку очистки только если есть история
-        if history:
-            buttons.append(
-                ft.OutlinedButton(
-                    "Очистить историю", 
-                    on_click=lambda e: show_clear_confirmation(file_path, title, is_podzakaz),
-                    style=ft.ButtonStyle(color="red")
+            ]
+            
+            # Добавляем кнопку очистки только если есть история
+            if history:
+                buttons.append(
+                    ft.OutlinedButton(
+                        "Очистить историю", 
+                        on_click=lambda e: show_clear_confirmation(file_path, title, is_podzakaz),
+                        style=ft.ButtonStyle(color="red")
+                    )
                 )
+            
+            history_content.append(ft.Row(buttons, alignment=ft.MainAxisAlignment.CENTER))
+            
+            # Показываем страницу истории
+            page.clean()
+            page.add(ft.Column(history_content, scroll=ft.ScrollMode.ADAPTIVE))
+
+        def show_history(e):
+            """Показывает страницу с историей продаж"""
+            history = app.get_sales_history()
+            show_history_page(history, "История продаж", app.csv_file)
+
+        def show_podzakaz_history(e):
+            """Показывает страницу с историей подзаказов"""
+            history = app.get_podzakaz_history()
+            show_history_page(history, "История подзаказов", app.podzakaz_file, is_podzakaz=True)
+
+        def show_main_page():
+            """Показывает главную страницу с формой ввода"""
+            page.clean()
+            page.add(
+                ft.Column([
+                    ft.Row([
+                        ft.Text("Добавление продажи", size=24, weight=ft.FontWeight.BOLD, expand=True),
+                        connection_status,
+                    ]),
+                    ft.Divider(),
+                    product_name,
+                    color,
+                    size,
+                    price,
+                    category,
+                    courier_name,
+                    courier_amount,
+                    paid_amount,
+                    remaining_amount,
+                    client_link,
+                    ft.Row([
+                        ft.ElevatedButton("Сохранить", on_click=save_click, style=ft.ButtonStyle(color="white")),
+                        ft.OutlinedButton("История продаж", on_click=show_history),
+                        ft.OutlinedButton("Подзаказы", on_click=show_podzakaz_history),
+                    ]),
+                    result_text,
+                ], scroll=ft.ScrollMode.ADAPTIVE)
             )
-        
-        history_content.append(ft.Row(buttons, alignment=ft.MainAxisAlignment.CENTER))
-        
-        # Показываем страницу истории
-        page.clean()
-        page.add(ft.Column(history_content, scroll=ft.ScrollMode.ADAPTIVE))
 
-    def show_history(e):
-        """Показывает страницу с историей продаж"""
-        history = app.get_sales_history()
-        show_history_page(history, "История продаж", app.csv_file)
+        # Запускаем приложение с главной страницы
+        show_main_page()
 
-    def show_podzakaz_history(e):
-        """Показывает страницу с историей подзаказов"""
-        history = app.get_podzakaz_history()
-        show_history_page(history, "История подзаказов", app.podzakaz_file, is_podzakaz=True)
+    except Exception as e:
+        # Показываем полную ошибку
+        error_msg = f"""
+🚫 КРИТИЧЕСКАЯ ОШИБКА ПРИ ЗАПУСКЕ:
 
-    def show_main_page():
-        """Показывает главную страницу с формой ввода"""
+{str(e)}
+
+📋 Тип ошибки: {type(e).__name__}
+
+🛠️ Что проверить:
+• Интернет соединение
+• Версию Python
+• Установлены ли все библиотеки (flet, requests)
+"""
         page.clean()
         page.add(
             ft.Column([
-                ft.Row([
-                    ft.Text("Добавление продажи", size=24, weight=ft.FontWeight.BOLD, expand=True),
-                    connection_status,
-                ]),
+                ft.Text("❌ Ошибка запуска", size=24, color="red", weight=ft.FontWeight.BOLD),
+                ft.Text(error_msg, size=14),
                 ft.Divider(),
-                product_name,
-                color,
-                size,
-                price,
-                category,
-                courier_name,
-                courier_amount,
-                paid_amount,
-                remaining_amount,
-                client_link,
-                ft.Row([
-                    ft.ElevatedButton("Сохранить", on_click=save_click, style=ft.ButtonStyle(color="white")),
-                    ft.OutlinedButton("История продаж", on_click=show_history),
-                    ft.OutlinedButton("Подзаказы", on_click=show_podzakaz_history),
-                ]),
-                result_text,
-            ], scroll=ft.ScrollMode.ADAPTIVE)
+                ft.Text("Техническая информация:", size=16, weight=ft.FontWeight.BOLD),
+                ft.Text(f"Python: {sys.version.split()[0]}", size=12),
+                ft.Text(f"Flet: {ft.__version__}", size=12),
+            ], scroll=ft.ScrollMode.ALWAYS)
         )
-
-    # Запускаем приложение с главной страницы
-    show_main_page()
+        print(f"Ошибка запуска: {e}")
+        return  # Прерываем выполнение если есть ошибка
 
 if __name__ == "__main__":
     ft.app(target=main, view=ft.AppView.FLET_APP)
